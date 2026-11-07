@@ -75,3 +75,21 @@ class InferenceTests(unittest.TestCase):
                 app.infer("j", "new", self.data_input, {1})
         with app.db() as c:
             self.assertEqual(c.execute("SELECT count(*) FROM calls").fetchone()[0], 1)
+
+    def test_reviewer_can_reject_without_forced_type(self):
+        data = dict(self.data_input, candidate={"type": "Scanning", "identity": "x"})
+        with patch.object(app, "prompt", return_value="review"), patch.object(
+            app, "tokens", return_value=20
+        ), patch.object(
+            app,
+            "post",
+            return_value={
+                "content": '{"findings":[]}',
+                "tokens_evaluated": 20,
+                "tokens_predicted": 5,
+            },
+        ) as post:
+            self.assertEqual(app.infer("j", "review", data, {1}), [])
+            schema = post.call_args.args[1]["json_schema"]["properties"]["findings"]
+            self.assertEqual(schema["minItems"], 0)
+            self.assertGreater(len(schema["items"]["properties"]["type"]["enum"]), 1)

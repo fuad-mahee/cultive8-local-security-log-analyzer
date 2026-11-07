@@ -225,6 +225,14 @@
     }
     function render(report) {
       $("report").replaceChildren();
+      if (report.stage)
+        $("report").append(
+          el(
+            "p",
+            "Analysis is in progress. Final findings are not ready.",
+            "notice",
+          ),
+        );
       const stats = el("div", undefined, "panel row");
       for (const [label, value] of [
         ["Incidents", (report.findings || []).length],
@@ -237,6 +245,26 @@
         stats.append(m);
       }
       $("report").append(stats);
+      if (report.runtime?.max_observed_combined_resident_bytes) {
+        $("report").append(
+          el(
+            "p",
+            "Model + backend process memory: " +
+              (
+                report.runtime.max_observed_combined_resident_bytes / 1e9
+              ).toFixed(2) +
+              " GB high-water estimate. OS memory is not included.",
+          ),
+        );
+      }
+      if (report.reviews)
+        $("report").append(
+          el(
+            "p",
+            report.reviews.filter((r) => !r.accepted).length +
+              " review batches returned no supported finding.",
+          ),
+        );
       for (const failure of report.failures || [])
         $("report").append(
           el("p", "Coverage gap: " + JSON.stringify(failure), "notice"),
@@ -254,11 +282,16 @@
           el("p", f.reason),
           el("p", "Suggested action: " + f.action),
         );
-        for (const e of f.evidence || []) {
+        for (const e of [
+          ...(f.evidence || []),
+          ...(f.supporting_context || []),
+        ]) {
           card.append(
             el(
               "strong",
-              "Line " +
+              (e.context
+                ? "Related counted evidence — line "
+                : "Model-cited line ") +
                 e.line +
                 (e.source_lines.length > 1
                   ? " · duplicate source lines " + e.source_lines.join(", ")
@@ -268,6 +301,32 @@
           );
         }
         $("report").append(card);
+      }
+      if (report.observed_signals?.length) {
+        const section = el("section", undefined, "panel");
+        section.append(
+          el("h2", "Observed signals and model decisions"),
+          el(
+            "p",
+            "These source-backed observations are proposals for human review. A rejected proposal is not proof that the activity was safe.",
+          ),
+        );
+        for (const signal of report.observed_signals) {
+          const d = el("details");
+          d.append(
+            el(
+              "summary",
+              signal.type + " · " + signal.identity + " · " + signal.status,
+            ),
+            el("p", signal.observation),
+          );
+          for (const e of signal.evidence)
+            d.append(
+              el("pre", "Line " + e.line + " · " + JSON.stringify(e.text)),
+            );
+          section.append(d);
+        }
+        $("report").append(section);
       }
       if (report.warnings?.length) {
         let d = el("details", undefined, "panel");
@@ -299,7 +358,9 @@
           timer = setTimeout(poll, 1800);
         else await history();
       } catch (e) {
-        $("status").textContent = e.message;
+        $("status").textContent =
+          "Connection interrupted; retrying. " + e.message;
+        timer = setTimeout(poll, 3000);
       }
     }
     $("start").onclick = async () => {

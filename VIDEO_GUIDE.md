@@ -9,3 +9,5 @@
 7. Explain an AI mistake corrected during development and what you would improve with more time.
 
 Record your own voice and screen; the assessment asks for your thinking process. Upload to Google Drive and verify Anyone with the link can view it before submission.
+
+For the revised version, demonstrate a rejected benign proposal as well as a supported attack. Explain why model review can disagree with rules, how model-only discoveries remain eligible, and why a small model can still be wrong. Use the current validation result and distinguish process memory from whole-machine certification.

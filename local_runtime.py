@@ -42,7 +42,7 @@ def resident_bytes(pid):
             c.cb = ctypes.sizeof(c)
             if not psapi.GetProcessMemoryInfo(h, ctypes.byref(c), c.cb):
                 raise OSError("Cannot read process memory")
-            return c.WorkingSetSize
+            return max(c.WorkingSetSize, c.PeakWorkingSetSize)
         finally:
             kernel.CloseHandle(h)
     return int(pathlib.Path(f"/proc/{pid}/statm").read_text().split()[1]) * os.sysconf(
@@ -143,5 +143,5 @@ class LocalRuntime:
             "max_observed_combined_resident_bytes": self.max_observed,
             "recycle_after_calls": 6,
             "memory_recycle_threshold_bytes": 2600000000,
-            "measurement": "Combined model and backend RSS sampled between calls; OS overhead and instantaneous peaks are not included.",
+            "measurement": "Sum of model and backend process high-water working sets observed across managed process lifetimes. OS overhead is not included; this is not an isolated-machine certification.",
         }

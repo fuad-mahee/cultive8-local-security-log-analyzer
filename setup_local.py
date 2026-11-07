@@ -8,7 +8,9 @@ for folder in ("runtime", "models", "data"):
 def download(url, path):
     if not path.exists():
         print("Downloading", url, flush=True)
-        urllib.request.urlretrieve(url, path)
+        temporary = path.with_suffix(path.suffix + ".part")
+        urllib.request.urlretrieve(url, temporary)
+        temporary.replace(path)
     return path
 
 
@@ -55,11 +57,11 @@ manifest = {
     "filename": name,
     "sha256": hashlib.file_digest(model.open("rb"), "sha256").hexdigest(),
 }
-(root / "models" / "manifest.json").write_text(json.dumps(manifest, indent=2))
-(root / "MODEL_MANIFEST.json").write_text(json.dumps(manifest, indent=2))
 if (
     manifest["sha256"]
     != "aaf42c8b7c3cab2bf3d69c355048d4a0ee9973d48f16c731c0520ee914699223"
 ):
     raise RuntimeError("Model checksum mismatch; do not run the downloaded file")
+(root / "models" / "manifest.json").write_text(json.dumps(manifest, indent=2))
+(root / "MODEL_MANIFEST.json").write_text(json.dumps(manifest, indent=2))
 print(json.dumps(manifest, indent=2))

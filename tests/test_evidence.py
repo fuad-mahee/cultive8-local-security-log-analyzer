@@ -14,6 +14,7 @@ class EvidenceTests(unittest.TestCase):
                     "username": "u",
                     "auth_result": "invalid_password",
                     "time": "01",
+                    "event_id": "synthetic-duplicate",
                 },
                 {
                     "client_ip": "a",
@@ -31,7 +32,7 @@ class EvidenceTests(unittest.TestCase):
                 "client_ip": "arbitrary",
                 "username": "new-user",
                 "auth_result": "invalid_password",
-                "time": str(i),
+                "time": f"2026-01-01T00:00:0{i}Z",
             }
             for i in range(5)
         ]
@@ -40,7 +41,7 @@ class EvidenceTests(unittest.TestCase):
                 "client_ip": "arbitrary",
                 "username": "new-user",
                 "auth_result": "success",
-                "time": "9",
+                "time": "2026-01-01T00:00:09Z",
             }
         )
         c = app.candidates(self.records(es))
@@ -53,6 +54,7 @@ class EvidenceTests(unittest.TestCase):
             "username": "u",
             "auth_result": "invalid_password",
             "time": "01",
+            "event_id": "synthetic-duplicate",
         }
         self.assertEqual(app.candidates(self.records([e] * 10)), [])
 
@@ -63,7 +65,7 @@ class EvidenceTests(unittest.TestCase):
                 "client_ip": "x",
                 "username": "u",
                 "auth_result": "invalid_password",
-                "time": str(i),
+                "time": f"2026-01-01T00:00:0{i}Z",
             }
             for i in range(5)
         ]
@@ -73,7 +75,7 @@ class EvidenceTests(unittest.TestCase):
                 "client_ip": "x",
                 "username": "u",
                 "auth_result": "success",
-                "time": "9",
+                "time": "2026-01-01T00:00:09Z",
             }
         )
         self.assertEqual(app.candidates(self.records(es))[0]["type"], "Brute force")

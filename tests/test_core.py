@@ -4,7 +4,9 @@ import app
 
 class CoreTests(unittest.TestCase):
     def test_duplicates(self):
-        rows, w = app.parse('{"client_ip":"a"}\n\n{"client_ip":"a"}')
+        rows, w = app.parse(
+            '{"client_ip":"a","event_id":"test-1"}\n\n{"client_ip":"a","event_id":"test-1"}'
+        )
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["source_lines"], [1, 3])
 

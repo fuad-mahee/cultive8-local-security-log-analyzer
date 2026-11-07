@@ -36,3 +36,15 @@ Additional inference tests exposed SQLite connections remaining open after conte
 Final evidence validation also exposed a context-reduction issue: the model cited real source lines listed in a hypothesis summary, but validation only allowed the smaller set of raw records still present in that prompt. Expanded the allowed set to the hypothesis's verified original source references. No nonexistent line is permitted. Larger evidence sets remain recoverable from source storage.
 
 The local model assigned Medium severity to the source-backed suspected account-compromise incident. Added a generic High investigation-priority floor for that incident class, preserving `model_severity` and a policy explanation in the exported report. This is a documented application policy, not a claim that the model made the corrected prioritization itself.
+
+## Recruiter-review revision
+
+A later review found that the original hypothesis schema forced one finding of a prescribed type and discarded discoveries from the chunk pass. That design could make the model merely confirm rules. The revision allows zero findings and permits reclassification, feeds both model discoveries and rule proposals into review, and preserves the model's chosen evidence and identity. Candidate facts are treated as observations with provenance, not an instruction to declare an attack.
+
+The first revised prompt rejected benign test cases but also missed obvious attacks. A balanced prompt with both a positive SQL-attempt example and a benign example corrected those smoke tests. Synthetic local-model checks then rejected a normal request and one failed login followed by success, and detected explicit SQL payloads and repeated login failures. This is limited test evidence, not a broad accuracy benchmark.
+
+Additional review found that sparse representative login evidence could omit the total count. Review now receives structured authentication facts through the current batch, including counted source references. Findings are not manufactured from those facts: the model can still reject the hypothesis.
+
+Other corrections include exact fragment serialization in token packing, preserved repetition for events without explicit delivery IDs, parsed ISO chronology, class/host/account-aware consolidation, configuration-sensitive cache keys, and atomic single-worker admission. See REVIEW.md for the assessment rubric mapping and remaining risks.
+
+The full independent-review run initially retained only account compromise and SQL injection. Added concise evidence-specific questions for scanning, denied/traversal attempts, rolling rate counters, and instruction-like payloads. These still permit rejection and reclassification. Added a separate observed-signals section so rejected evidence remains visible for human review rather than disappearing from the product. Model citations remain separate from related counted authentication evidence.
