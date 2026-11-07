@@ -1,0 +1,16 @@
+runtime/
+models/
+data/
+__pycache__/
+*.pyc
+*.zip
+QUALITY_RESULTS.json
+VALIDATION_RESULTS.json
+HTTP_RESULTS.json
+OFFLINE_RESULTS.json
+VALIDATION.md
+evaluate_model.py
+run_assessment.py
+watch_analysis.py
+verify_final_report.py
+rebuild_report.py

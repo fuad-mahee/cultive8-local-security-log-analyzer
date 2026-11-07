@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>Sentinel | Local security analysis</title
+  ><style>
+    :root {
+      font-family:
+        Inter,
+        Segoe UI,
+        sans-serif;
+      color: #dfe9f6;
+      background: #0b111c;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+    }
+    header {
+      border-bottom: 1px solid #263348;
+      padding: 24px 6%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    main {
+      max-width: 1150px;
+      margin: 48px auto;
+      padding: 0 24px;
+    }
+    h1 {
+      font-size: 42px;
+      letter-spacing: -1.5px;
+      margin: 10px 0;
+    }
+    h2 {
+      font-size: 20px;
+    }
+    p {
+      color: #94a5bc;
+      line-height: 1.7;
+    }
+    .eyebrow {
+      color: #64d6bb;
+      font-size: 12px;
+      letter-spacing: 2px;
+    }
+    .panel {
+      background: #121c2c;
+      border: 1px solid #28364c;
+      border-radius: 14px;
+      padding: 26px;
+      margin: 22px 0;
+    }
+    .upload {
+      border: 1px dashed #4a6380;
+      padding: 28px;
+      border-radius: 10px;
+      background: #0e1725;
+    }
+    button,
+    .download {
+      background: #6ce0bd;
+      border: 0;
+      color: #092419;
+      padding: 12px 20px;
+      border-radius: 7px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: wait;
+    }
+    input {
+      max-width: 100%;
+      margin: 12px 0 20px;
+    }
+    progress {
+      width: 100%;
+      accent-color: #6ce0bd;
+      height: 10px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 5px;
+      background: #25364b;
+      color: #bed1ea;
+      font-size: 12px;
+      margin-right: 8px;
+    }
+    .High,
+    .Critical {
+      background: #512735;
+      color: #ffb3c1;
+    }
+    .Medium {
+      background: #493b24;
+      color: #ffda92;
+    }
+    .Low {
+      background: #203f3b;
+      color: #87dec9;
+    }
+    summary {
+      cursor: pointer;
+      line-height: 1.8;
+    }
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      background: #0b1320;
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 12px;
+    }
+    details {
+      margin: 14px 0;
+    }
+    .row {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+    .metric {
+      flex: 1;
+      min-width: 150px;
+    }
+    .metric strong {
+      font-size: 25px;
+      display: block;
+    }
+    a {
+      color: #6ce0bd;
+    }
+    .notice {
+      color: #ffda92;
+    }
+    #status {
+      white-space: pre-wrap;
+    }
+    select {
+      background: #0e1725;
+      color: #dfe9f6;
+      padding: 10px;
+      width: 100%;
+      border: 1px solid #34465f;
+    }
+    footer {
+      padding: 30px;
+      text-align: center;
+      color: #7890aa;
+      font-size: 12px;
+    }
+  </style>
+  <header>
+    <strong>◈ SENTINEL</strong
+    ><span id="health" class="badge">Checking local model…</span>
+  </header>
+  <main>
+    <span class="eyebrow">PRIVATE BY DESIGN · LOCAL INFERENCE</span>
+    <h1>Turn logs into evidence.</h1>
+    <p>
+      Find suspicious activity across your server logs. Every assessment stays
+      on your machine, with source lines you can inspect.
+    </p>
+    <section class="panel">
+      <h2>Analyze a log file</h2>
+      <div class="upload">
+        <label for="file">Choose a UTF-8 .log or .txt file · maximum 2 MB</label
+        ><br /><input id="file" type="file" accept=".log,.txt" /><br /><button
+          id="start"
+        >
+          Start analysis →
+        </button>
+      </div>
+      <p id="status" role="status" aria-live="polite">Ready when you are.</p>
+      <progress id="progress" max="1" value="0"></progress>
+    </section>
+    <section class="panel">
+      <h2>Analysis history</h2>
+      <select id="history" aria-label="Previous analyses">
+        <option value="">Select an analysis</option>
+      </select>
+      <p>
+        <button id="resume">Resume / retry failed work</button>
+        <button id="export">Export JSON</button>
+      </p>
+    </section>
+    <div id="report"></div>
+  </main>
+  <footer>
+    Local AI assessments support human investigation. Evidence does not
+    establish intent or successful exploitation by itself.
+  </footer>
+  <script>
+    let current = null,
+      timer;
+    const $ = (id) => document.getElementById(id);
+    function el(tag, text, cls) {
+      const e = document.createElement(tag);
+      if (text !== undefined) e.textContent = text;
+      if (cls) e.className = cls;
+      return e;
+    }
+    async function api(url, opt) {
+      const r = await fetch(url, opt),
+        d = await r.json();
+      if (!r.ok) throw Error(d.error || "Request failed");
+      return d;
+    }
+    async function history() {
+      const jobs = await api("/api/jobs");
+      $("history").replaceChildren(el("option", "Select an analysis"));
+      for (const j of jobs) {
+        let o = el("option", `${j.name} · ${j.state}`);
+        o.value = j.id;
+        $("history").append(o);
+      }
+      if (current) $("history").value = current;
+    }
+    function render(report) {
+      $("report").replaceChildren();
+      const stats = el("div", undefined, "panel row");
+      for (const [label, value] of [
+        ["Incidents", (report.findings || []).length],
+        ["Unique events", report.unique_events ?? "—"],
+        ["Duplicates", report.duplicate_records ?? "—"],
+        ["Saved responses", (report.calls || []).length],
+      ]) {
+        let m = el("div", undefined, "metric");
+        m.append(el("strong", String(value)), el("span", label));
+        stats.append(m);
+      }
+      $("report").append(stats);
+      for (const failure of report.failures || [])
+        $("report").append(
+          el("p", "Coverage gap: " + JSON.stringify(failure), "notice"),
+        );
+      for (const f of report.findings || []) {
+        const card = el("details", undefined, "panel"),
+          s = el("summary");
+        s.append(
+          el("span", f.severity, "badge " + f.severity),
+          el("span", f.type + " · " + f.identity),
+        );
+        card.append(
+          s,
+          el("p", f.outcome, "badge"),
+          el("p", f.reason),
+          el("p", "Suggested action: " + f.action),
+        );
+        for (const e of f.evidence || []) {
+          card.append(
+            el(
+              "strong",
+              "Line " +
+                e.line +
+                (e.source_lines.length > 1
+                  ? " · duplicate source lines " + e.source_lines.join(", ")
+                  : ""),
+            ),
+            el("pre", JSON.stringify(e.text, null, 2)),
+          );
+        }
+        $("report").append(card);
+      }
+      if (report.warnings?.length) {
+        let d = el("details", undefined, "panel");
+        d.append(
+          el("summary", report.warnings.length + " parsing warnings"),
+          el("pre", report.warnings.join("\n")),
+        );
+        $("report").append(d);
+      }
+      if (report.calls?.length) {
+        let d = el("details", undefined, "panel");
+        d.append(
+          el("summary", "Token budget and model timing"),
+          el("pre", JSON.stringify(report.calls, null, 2)),
+        );
+        $("report").append(d);
+      }
+    }
+    async function poll() {
+      if (!current) return;
+      try {
+        let j = await api("/api/jobs/" + current);
+        $("status").textContent = j.state.toUpperCase() + " · " + j.detail;
+        $("progress").max = Math.max(j.total, 1);
+        $("progress").value = j.done;
+        render(j.report);
+        $("start").disabled = ["running", "pending"].includes(j.state);
+        if (["running", "pending"].includes(j.state))
+          timer = setTimeout(poll, 1800);
+        else await history();
+      } catch (e) {
+        $("status").textContent = e.message;
+      }
+    }
+    $("start").onclick = async () => {
+      try {
+        let f = $("file").files[0];
+        if (!f) throw Error("Choose a file first");
+        $("start").disabled = true;
+        let j = await api("/api/upload", {
+          method: "POST",
+          headers: {
+            "X-Filename": encodeURIComponent(f.name),
+            "Content-Type": "text/plain",
+          },
+          body: f,
+        });
+        current = j.id;
+        clearTimeout(timer);
+        poll();
+      } catch (e) {
+        $("status").textContent = e.message;
+        $("start").disabled = false;
+      }
+    };
+    $("history").onchange = () => {
+      current = $("history").value;
+      clearTimeout(timer);
+      poll();
+    };
+    $("resume").onclick = async () => {
+      try {
+        if (!current) throw Error("Select an analysis");
+        await api("/api/resume/" + current, { method: "POST" });
+        poll();
+      } catch (e) {
+        $("status").textContent = e.message;
+      }
+    };
+    $("export").onclick = async () => {
+      if (!current) return;
+      let j = await api("/api/jobs/" + current),
+        u = URL.createObjectURL(
+          new Blob([JSON.stringify(j, null, 2)], { type: "application/json" }),
+        ),
+        a = el("a");
+      a.href = u;
+      a.download = "security-report.json";
+      a.click();
+      URL.revokeObjectURL(u);
+    };
+    async function health() {
+      let h = await api("/api/health");
+      $("health").textContent = h.model_ready
+        ? "● Local model ready"
+        : "○ Local model unavailable";
+    }
+    health();
+    history();
+    setInterval(() => health().catch(() => {}), 15000);
+  </script>
+</html>
